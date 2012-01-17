@@ -11,7 +11,7 @@ class CPBasicAuthTest(unittest.TestCase):
 
     def setUp(self):
         self.req = CPDummyRequest()
-        self.req.environ['HTTP_AUTHORIZATION'] = 'Basic d2hpdDpzZWNyZXQ='
+        self.req.authorization = ('Basic', 'd2hpdDpzZWNyZXQ=')
         self.req.headers['Authorization'] = 'Basic d2hpdDpzZWNyZXQ='
         self.req.environ['wsgi.version'] = '1.0'
 
@@ -22,7 +22,7 @@ class CPBasicAuthTest(unittest.TestCase):
         
     def test_authenticated_userid_nocred(self):
         policy = self.makeone()
-        del self.req.environ['HTTP_AUTHORIZATION'] 
+        self.req.authorization = None
         userid = policy.authenticated_userid(self.req)
         assert userid is None
 
@@ -34,16 +34,16 @@ class CPBasicAuthTest(unittest.TestCase):
     def test_get_cred_bad(self):
         from cheeseprism.auth import BasicAuthenticationPolicy as policy
 
-        self.req.environ['HTTP_AUTHORIZATION'] = 'bleh'
+        self.req.authorization = None
         assert policy._get_credentials(self.req) is None
 
-        self.req.environ['HTTP_AUTHORIZATION'] = 'Basic 123'
+        self.req.authorization = ('Basic', '123')
         assert policy._get_credentials(self.req) is None
 
-        self.req.environ['HTTP_AUTHORIZATION'] = 'Basic d2hpdCtzZWNyZXQ=\n'
+        self.req.authorization = ('Basic', 'd2hpdCtzZWNyZXQ=\n')
         assert policy._get_credentials(self.req) is None
 
-        self.req.environ['HTTP_AUTHORIZATION'] = 'fah nah'
+        self.req.authorization = ('fah', 'nah')
         assert policy._get_credentials(self.req) is None
 
     def test_effective_principals(self):
@@ -52,7 +52,7 @@ class CPBasicAuthTest(unittest.TestCase):
         assert princs == ['system.Everyone', 'system.Authenticated', 'whit']
 
     def test_effective_p_without_cred(self):
-        self.req.environ['HTTP_AUTHORIZATION'] = 'Basic d2hpdCtzZWNyZXQ=\n'
+        self.req.authorization = ('Basic', 'd2hpdCtzZWNyZXQ=\n')
         policy = self.makeone()
         assert policy.effective_principals(self.req) == ['system.Everyone']
 
@@ -63,7 +63,7 @@ class CPBasicAuthTest(unittest.TestCase):
     def test_unauth_userid(self):
         policy = self.makeone()
         assert 'whit' == policy.unauthenticated_userid(self.req)
-        self.req.environ['HTTP_AUTHORIZATION'] = 'Bad Auth'
+        self.req.authorization = ('Bad', 'Auth')
         assert policy.unauthenticated_userid(self.req) is None
 
 

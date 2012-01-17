@@ -75,7 +75,7 @@ Run
 The following will start the application and a static file server for
 `CheesePrism` suitable for testing and development::
 
- $ paster serve development.ini
+ $ pserve development.ini
 
 **If** you have not installed the source (ie. you installed the
 package or from the strap file), you will need to copy the
@@ -114,11 +114,11 @@ See ``doc/sample-nginx.conf`` and replace ``alias CheesePrism/files;`` and
 Serve management app
 ~~~~~~~~~~~~~~~~~~~~
 
-Use the prod.ini (edited for your setup) for simplest serving. Be sure
+Use the production.ini (edited for your setup) for simplest serving. Be sure
 to remove such things as ``pyramid.includes = pyramid_debugtoolbar``
 if security is a concern::
 
- $ paster serve prod.ini
+ $ pserve production.ini
 
 Sane people use something like upstart or `supervisord <supervisord.org>`_ to manage this process.
 
@@ -138,23 +138,22 @@ python2.6 and better you can setup your ``~/.pypirc`` and then upload to
 your prism as you would `pypi <http://pypi.python.org/pypi>`_::
 
  [distutils]
-    index-servers =
-        pypi
-        local
+ index-servers =
+     pypi
+     local
 
 
  [pypi]
-    username:user
-    password:secret
+ username:user
+ password:secret
 
  [local]
-    # your prism of fromage
-    username:user
-    password:secret
-    repository:http://mycheese
+ # your prism of fromage
+ username:user
+ password:secret
+ repository:http://localhost:6543/simple
 
-
-The you can upload a source ala::
+Then you can upload a source ala::
 
   $  cd /src/MyAwesomePyPkg
   $  python setup.py sdist upload -r local

@@ -13,7 +13,8 @@ requires = ['Jinja2',
             'pyramid_debugtoolbar',
             'pyramid_jinja2',
             'requests',
-            'pip']
+            'pip',
+            'Paste']
 
 setup(name='CheesePrism',
       version='0.1a2',

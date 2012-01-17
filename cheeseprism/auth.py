@@ -1,5 +1,3 @@
-from paste.httpheaders import AUTHORIZATION
-from paste.httpheaders import WWW_AUTHENTICATE
 from pyramid.interfaces import IAuthenticationPolicy
 from pyramid.security import Authenticated
 from pyramid.security import Everyone
@@ -41,11 +39,10 @@ class BasicAuthenticationPolicy(object):
 
     @staticmethod
     def _get_credentials(request):
-        authorization = AUTHORIZATION(request.environ)
-        try:
-            authmeth, auth = authorization.split(' ', 1)
-        except ValueError: # not enough values to unpack
+        authorization = request.authorization
+        if authorization is None:
             return None
+        authmeth, auth = request.authorization
         if authmeth.lower() == 'basic':
             try:
                 auth = auth.strip().decode('base64')
@@ -83,8 +80,8 @@ class BasicAuthenticationPolicy(object):
         return []
 
     def forget(self, request):
-        head = WWW_AUTHENTICATE.tuples('Basic realm="%s"' % self.realm)
-        return head
+        headers = [('WWW-Authenticate', 'Basic realm="%s"' % self.realm)]
+        return headers
 
     @staticmethod
     def noop_check(credentials, request):
