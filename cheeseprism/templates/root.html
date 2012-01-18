@@ -1,0 +1,8 @@
+{%extends "base.html"%}
+{% block content%}
+<h1>{{request.settings['title']}}</h1>
+<em>{{request.settings['description']}}</em>
+<ul>
+  <li><a href="{{ctx_url}}@@indexes">Browse package indexes</a></li>
+</ul>
+{% endblock %}

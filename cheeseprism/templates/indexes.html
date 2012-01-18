@@ -1,0 +1,20 @@
+{%extends "base.html"%}
+{% block content%}
+<h2>Add an index</h2>
+
+<form action='{{ctx_url}}@@indexes' method="POST">
+  <input type='text' name='name'/> <input type='submit'>
+</form>
+
+{%if indexes%}
+<h2>Click on an index to view its contents</h2>
+
+<ul>
+  {% for i in indexes %}
+  <li>
+    <a href='{{ctx_url}}{{i.name}}'>{{i.name}}</a>
+  </li>
+  {% endfor %}
+</ul>
+{%endif%}
+{% endblock %}

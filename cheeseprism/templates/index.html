@@ -3,10 +3,10 @@
 <h1>{{request.settings['title']}}</h1>
 <em>{{request.settings['description']}}</em>
 <ul>
-  <li><a href="/index">Browse package index</a></li>
-  <li><a href="/instructions">How to use this application</a></li>
-  <li><a href="/regenerate-index">Rebuild index</a></li>
-  <li><a href="/find-packages">Search pypi for packages to add to index</a></li>
-  <li><a href="/load-requirements">Load index via a pip requirements file</a></li>
+  <li><a href="{{ctx_url}}@@browse">Browse package index</a></li>
+  <li><a href="{{ctx_url}}@@regenerate">Rebuild index</a></li>
+  <li><a href="{{ctx_url}}@@find-packages">Search pypi for packages to add to index</a></li>
+  <li><a href="{{ctx_url}}@@load-requirements">Load index via a pip requirements file</a></li>
+  <li><a href="{{ctx_url}}@@instructions">How to use this application</a></li>
 </ul>
 {% endblock %}

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class IndexManager(object):
     """
-    Manages the static file index
+    Manages a static file index
     """
 
     root_index_file = 'index.html'
@@ -38,7 +38,7 @@ class IndexManager(object):
                         description="Welcome to the CheesePrism")
     index_data_lock = threading.Lock()
     
-    def __init__(self, index_path, template_env=None, urlbase='..',
+    def __init__(self, index_path, template_env=None, urlbase='../..',
                  index_data={}, leaf_data={}, error_folder='_errors'):
         self.urlbase = urlbase
         self.template_env = template_env
@@ -47,9 +47,8 @@ class IndexManager(object):
         self.index_data = index_data.copy()            
         self.leaf_data = leaf_data.copy()
         self.path = path(index_path)
-        if not self.path.exists():
-            self.path.makedirs()
         self.error_folder = self.path / error_folder
+        self.initialize()
 
     leaf_template = template('leaf.html')
     home_template = template('home.html')
@@ -61,6 +60,13 @@ class IndexManager(object):
     @property
     def files(self):
         return (x for x in self.path.files() if self.EXTS.match(x))
+
+    def initialize(self):
+        if not self.path.exists():
+            self.path.makedirs()
+        marker = self.path / '__isindex__'
+        if not marker.exists():
+            marker.touch()
 
     def projects_from_archives(self):
         files = self.files

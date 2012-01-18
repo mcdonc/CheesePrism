@@ -1,7 +1,6 @@
 from cheeseprism.auth import BasicAuthenticationPolicy
-from cheeseprism.index import EnvFactory
 from cheeseprism.request import CPRequest as Request
-from cheeseprism.resources import App
+from cheeseprism.resources import get_root
 from pyramid.config import Configurator
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from pyramid_jinja2 import renderer_factory
@@ -10,10 +9,14 @@ from pyramid_jinja2 import renderer_factory
 def main(global_config, **settings):
     settings.setdefault('jinja2.i18n.domain', 'CheesePrism')
     session_factory = UnencryptedCookieSessionFactoryConfig('cheeseprism')
+    policy = BasicAuthenticationPolicy(BasicAuthenticationPolicy.noop_check)
 
-    config = Configurator(root_factory=App, settings=settings,
-                          session_factory=session_factory,
-                          authentication_policy=BasicAuthenticationPolicy(BasicAuthenticationPolicy.noop_check))
+    config = Configurator(
+        root_factory=get_root,
+        settings=settings,
+        session_factory=session_factory,
+        authentication_policy=policy,
+        )
     
     config.add_translation_dirs('locale/')
     config.include('pyramid_jinja2')
@@ -23,7 +26,6 @@ def main(global_config, **settings):
     config.scan('cheeseprism.views')
     config.scan('cheeseprism.index')
     config.set_request_factory(Request)
-    config.add_route('package', 'package/{name}/{version}', view='cheeseprism.views.package')
-    settings['index_templates'] = EnvFactory.from_str(settings['cheeseprism.index_templates'])
+    config.add_route('package', 'package/{name}/{version}')
 
     return config.make_wsgi_app()

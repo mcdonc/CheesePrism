@@ -1,7 +1,7 @@
 {%extends "base.html"%}
 {%block content%}
 <p>Regenerate index</p>
-<form method='POST'  action='/regenerate-index'> 
+<form method='POST'  action='{{ctx_url}}@@regenerate'> 
   <input type='submit' value='Go'> 
 </form>
 {%endblock%}

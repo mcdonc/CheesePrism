@@ -3,10 +3,16 @@ from cheeseprism import pipext
 from cheeseprism import resources
 from cheeseprism import utils
 from cheeseprism.rpc import PyPi
+from cheeseprism.resources import Root
 from path import path
 from pyramid.httpexceptions import HTTPFound
 from pyramid.i18n import TranslationStringFactory
 from pyramid.view import view_config
+from pyramid.events import (
+    BeforeRender,
+    subscriber,
+    )
+from pyramid.traversal import find_interface
 from urllib2 import HTTPError
 from urllib2 import URLError
 from webob import exc
@@ -20,35 +26,58 @@ logger = logging.getLogger(__name__)
 
 _ = TranslationStringFactory('CheesePrism')
 
-
-@view_config(renderer='index.html', context=resources.App)
+@subscriber(BeforeRender)
+def before_render(event):
+    request = event['request']
+    context = event['context']
+    event['ctx_url'] = request.resource_url(context)
+    event['app_url'] = request.application_url
+    
+@view_config(renderer='root.html', context=resources.Root)
 def homepage(context, request):
     return {}
 
+@view_config(name='indexes', renderer='indexes.html', context=resources.Root,
+             request_method='GET')
+def show_indexes(context, request):
+    indexes = context.indexes()
+    return {'indexes':indexes}
 
-@view_config(name='instructions', renderer='instructions.html', context=resources.App)
+@view_config(name='indexes', renderer='indexes.html', context=resources.Root,
+             request_method='POST')
+def add_index(context, request):
+    index_name = request.POST['name']
+    context.add_index(index_name)
+    request.session.flash('Index %s added' % index_name)
+    return HTTPFound(location=request.resource_url(context, '@@indexes'))
+
+@view_config(
+    name='instructions', renderer='instructions.html', context=resources.Index)
 def instructions(context, request):
     return {'page': 'instructions'}
 
+@view_config(renderer='index.html', context=resources.Index)
+def index(context, request):
+    packages = context.packages()
+    return {'packages':packages}
 
-@view_config(name='simple', context=resources.App)
+@view_config(name='simple', context=resources.Index, request_method='POST')
 def upload(context, request):
     """
-    The interface for disutils upload
+    The interface for distutils upload
     """
-    if not (request.method == 'POST' and hasattr(request.POST['content'], 'file')):
+    content = request.POST['content']
+    if not hasattr(content, 'file'):
         raise RuntimeError('No file attached') 
 
-    fieldstorage = request.POST['content']
-    dest = path(request.file_root) / utils.secure_filename(fieldstorage.filename)
-
-    dest.write_bytes(fieldstorage.file.read())
-    request.index.update_by_request(request)
+    fn = utils.secure_filename(content.filename)
+    context.write_distribution_file(fn, content.file)
+    context.manager.update_by_request(request)
     request.response.headers['X-Swalow-Status'] = 'SUCCESS'
     return request.response
 
-
-@view_config(name='find-packages', renderer='find_packages.html', context=resources.App)
+@view_config(name='find-packages', renderer='find_packages.html',
+             context=resources.Index)
 def find_package(context, request):
     releases = None
     search_term = None
@@ -58,22 +87,24 @@ def find_package(context, request):
     url = request.resource_url(context, request.view_name)
     return dict(releases=releases, search_term=search_term, here=url)
 
-
-def package(request, fpkgs='/find-packages'):
+@view_config(name='package', context=resources.Index)
+def package(context, request):
     """
     @@ convert to use action on a post rather than on a get
     """
-    name = request.matchdict['name']
-    version = request.matchdict['version']
+    subpath = request.subpath
+    name, version = subpath[:2]
     details = PyPi.package_details(name, version)
     flash = request.session.flash 
     if not details:
         flash("%s-%s not found" %(name, version))
-        return HTTPFound(fpkgs)
-        
-    if details[0]['md5_digest'] in request.index_data:
+        return HTTPFound(request.resource_url(context, '@@find-packages'))
+
+    root = find_interface(context, Root)
+
+    if details[0]['md5_digest'] in root.distribution_data:
         logger.debug('Package %s-%s already in index' %(name, version))
-        return HTTPFound('/index/%s' %name)
+        return HTTPFound(location=request.resource_url(context))
             
     details = details[0]
     url = details['url']
@@ -81,10 +112,11 @@ def package(request, fpkgs='/find-packages'):
     newfile = None
     try:
         resp = requests.get(url)
-        newfile = request.file_root / filename
-        newfile.write_bytes(resp.content)
+        newfile = root.path / filename
+        root.write_distribution_file(newfile, resp.raw)
     except HTTPError, e:
-        error = "HTTP Error: %d %s - %s" %(e.code, exc.status_map[e.code].title, url)
+        error = "HTTP Error: %d %s - %s" % (
+            e.code, exc.status_map[e.code].title, url)
         logger.error(error)
         flash(error)
     except URLError, e:
@@ -93,27 +125,30 @@ def package(request, fpkgs='/find-packages'):
 
     if newfile is not None:
         try:
-            added_event = event.PackageAdded(request.index, path=newfile)
+            added_event = event.PackageAdded(context.manager, path=newfile)
             request.registry.notify(added_event)            
-            flash('%s-%s was installed into the index successfully.' % (name, version))
-            return HTTPFound('/index/%s' %name)
+            flash('%s-%s was installed into the index successfully.' %
+                  (name, version))
+            return HTTPFound(location=request.resource_url(context, name))
         except Exception, e:
-            flash('Issue with adding %s to index: See logs: %s' % (newfile.name, e))
+            flash('Issue with adding %s to index: See logs: %s' %
+                  (newfile.name, e))
 
-    return HTTPFound(fpkgs)
+    return HTTPFound(location=request.resource_url(context, '@@find-packages'))
 
 
-@view_config(name='regenerate-index', renderer='regenerate.html', context=resources.App)
+@view_config(name='regenerate', renderer='regenerate.html',
+             context=resources.Index)
 def regenerate_index(context, request):
     if request.method == 'POST':
         logger.debug("Regenerate index")
-        homefile, leaves = request.index.regenerate_all()
+        homefile, leaves = context.manager.regenerate_all()
         logger.debug("regeneration done:\n %s %s", homefile, leaves) #@@ time it 
-        return HTTPFound('/index')
+        return HTTPFound(location=request.resource_url(context))
     return {}
 
 
-@view_config(name='load-requirements', renderer='requirements_upload.html', context=resources.App)
+@view_config(name='load-requirements', renderer='requirements_upload.html', context=resources.Index)
 def from_requirements(context, request):
     if request.method == "POST":
         req_text = request.POST['req_file'].file.read()

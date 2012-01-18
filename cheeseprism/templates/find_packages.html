@@ -10,7 +10,7 @@
 <ul>
   {% for r in releases %}
   <li>
-    <a href='/package/{{search_term}}/{{r}}'>{{r}}</a>
+    <a href='{{ctx_url}}package/{{search_term}}/{{r}}'>{{r}}</a>
   </li>
   {% endfor %}
 </ul>
